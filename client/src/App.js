@@ -1,73 +1,112 @@
-import React, { Component } from "react";
-import SimpleStorageContract from "./contracts/SimpleStorage.json";
-import getWeb3 from "./getWeb3";
-
 import "./App.css";
+import Web3 from "web3";
+import React, { Component } from "react";
+import HamichiToken from "./contracts/HamichiToken.json";
+import HamichiTokenSale from "./contracts/HamichiTokenSale.json";
+import KycContract from "./contracts/KycContract.json";
+
 
 class App extends Component {
-  state = { storageValue: 0, web3: null, accounts: null, contract: null };
 
-  componentDidMount = async () => {
-    try {
-      // Get network provider and web3 instance.
-      const web3 = await getWeb3();
+	async UNSAFE_componentWillMount() {
+		await this.loadWeb3()
+		await this.loadBlockchainData()
+	}
 
-      // Use web3 to get the user's accounts.
-      const accounts = await web3.eth.getAccounts();
+	constructor(props) {
+		super(props) 
+		this.state = {
+            hamichiTokenInstance: {},
+            hamichiTokenSaleInstance: {},
+            kycContractInstance: {},
+            customerAccount: '0x0',
+            kycAddress: "0x0",
+			loading: true
+		}
+	}
 
-      // Get the contract instance.
-      const networkId = await web3.eth.net.getId();
-      const deployedNetwork = SimpleStorageContract.networks[networkId];
-      const instance = new web3.eth.Contract(
-        SimpleStorageContract.abi,
-        deployedNetwork && deployedNetwork.address,
-      );
+	async loadWeb3() {
+		if(window.ethereuem) {
+			window.web3 = new Web3(window.ethereuem)
+			try{
+				await window.web3.enable()
+			} catch(error) {
+				window.alert('User account access denied by the user.')
+			}
+		} else if (window.web3) {
+			window.web3 = new Web3(window.web3.currentProvider)
+		} else {
+			window.alert('Opps! It seems like Ehereuem browser was nowhere to be found. You can check out MetaMask!')
+		}
+	}
 
-      // Set web3, accounts, and contract to the state, and then proceed with an
-      // example of interacting with the contract's methods.
-      this.setState({ web3, accounts, contract: instance }, this.runExample);
-    } catch (error) {
-      // Catch any errors for any of the above operations.
-      alert(
-        `Failed to load web3, accounts, or contract. Check console for details.`,
-      );
-      console.error(error);
+	async loadBlockchainData() {
+		const web3 = window.web3 
+        const customerAccount = await web3.eth.requestAccounts()
+		this.setState({customerAccount: customerAccount[0]})
+		const networkId = await web3.eth.net.getId()
+
+		//load HamichiToken Contract
+		const hamichiTokenData = HamichiToken.networks[networkId]
+		if(hamichiTokenData) {
+			const hamichiTokenInstance = new web3.eth.Contract(HamichiToken.abi, hamichiTokenData.address)
+      this.setState({hamichiTokenInstance: hamichiTokenInstance})
+		} else {
+			window.alert('Tether not deployed to the network')
+		}
+
+		//load HamichiTokenSale Contract
+		const hamichiTokenSaleData = HamichiTokenSale.networks[networkId]
+		if(hamichiTokenSaleData) {
+			const hamichiTokenSaleInstance = new web3.eth.Contract(HamichiTokenSale.abi, hamichiTokenSaleData.address)
+      this.setState({hamichiTokenSaleInstance: hamichiTokenSaleInstance})
+		} else {
+			window.alert('Tether not deployed to the network')
+		}
+
+		///load KycContract Contract
+		const KYCData = KycContract.networks[networkId]
+		if(KYCData) {
+			const kycContractInstance = new web3.eth.Contract(KycContract.abi, KYCData.address)
+      this.setState({kycContractInstance: kycContractInstance})
+		} else {
+			window.alert('Tether not deployed to the network')
+		}
+  
+    this.setState({loading:false})
+	}
+
+    handleInputChange = (event) => {
+        const target = event.target;
+        const value = target.type === "checkbox" ? target.checked : target.value;
+        const name = target.name;
+        this.setState({[name]:value})
     }
-  };
-
-  runExample = async () => {
-    const { accounts, contract } = this.state;
-
-    // Stores a given value, 5 by default.
-    await contract.methods.set(5).send({ from: accounts[0] });
-
-    // Get the value from the contract to prove it worked.
-    const response = await contract.methods.get().call();
-
-    // Update state with the result.
-    this.setState({ storageValue: response });
-  };
+  
+    handleKycWhitelisting = () => {
+        this.setState({loading: true})
+        this.state.kycContractInstance.methods.setKycCompleted(this.state.kycAddress).send({from: this.state.customerAccount}).on('transactionHash', (hash) => {
+            this.setState({loading: false})
+            alert("KYC for "+this.state.kycAddress+" is completed.");
+        })
+    }
 
   render() {
-    if (!this.state.web3) {
-      return <div>Loading Web3, accounts, and contract...</div>;
+      let content 
+	  if(this.state.loading == true) {
+        content = <p id='loader' className='text-center' style={{margin:'30', color:'white'}}>
+	    LOADING PLEASE...</p>
+	  } 
+        return (
+            <div className="App">
+                <h1>Hamichi Token Sale</h1>
+                <p>Get your Tokens today!</p>
+                <h2>KYC Whitelisting</h2>
+                Address to allow: <input type="text" name="kycAddress" value={this.state.kycAddress} onChange = {this.handleInputChange} />
+                <button type="button" onClick={this.handleKycWhitelisting}>Add to Whitelist</button>
+            </div>
+        )
     }
-    return (
-      <div className="App">
-        <h1>Good to Go!</h1>
-        <p>Your Truffle Box is installed and ready.</p>
-        <h2>Smart Contract Example</h2>
-        <p>
-          If your contracts compiled and migrated successfully, below will show
-          a stored value of 5 (by default).
-        </p>
-        <p>
-          Try changing the value stored on <strong>line 42</strong> of App.js.
-        </p>
-        <div>The stored value is: {this.state.storageValue}</div>
-      </div>
-    );
-  }
 }
 
 export default App;
