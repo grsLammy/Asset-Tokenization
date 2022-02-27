@@ -6,8 +6,4 @@ contract HamichiToken is ERC20 {
     constructor(uint256 initialSupply) ERC20("Hamichi Token", "Hami") {
         _mint(msg.sender, initialSupply);
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> dev
