@@ -15,4 +15,20 @@ contract("TokenSale Test", async (accounts) => {
         let instance = await HamichiToken.deployed();
         return await expect(instance.balanceOf(deployerAccount)).to.eventually.be.a.bignumber.equal(new BN(0));
     })
+
+    it("all tokens should be in the HamichiTokenSale smart contract by default", async () => {
+        let instance = await HamichiToken.deployed();
+        let balanceOfHamichiTokenSale = await instance.balanceOf(HamichiTokenSale.address);
+        let totalSupply = await instance.totalSupply();
+        return await expect(balanceOfHamichiTokenSale).to.be.a.bignumber.equal(totalSupply);
+    })
+
+    it("should be possible to buy tokens", async () => {
+        let HamichiTokenInstance= await HamichiToken.deployed();
+        let HamichiTokenSaleInstance = await HamichiTokenSale.deployed();
+        let balanceBefore = await HamichiTokenInstance.balanceOf(deployerAccount);
+        await HamichiTokenSaleInstance.sendTransaction({from: deployerAccount, value: web3.utils.toWei("1","wei")});
+        return await expect(HamichiTokenInstance.balanceOf(deployerAccount)).to.eventually.be.a.bignumber.equal(balanceBefore.add(new BN(1)));
+    })
+
 })
