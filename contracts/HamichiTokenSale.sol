@@ -7,7 +7,7 @@ contract HamichiTokenSale is Crowdsale {
 
     KycContract kyc;
     constructor(uint256 rate, address payable wallet, IERC20 token, KycContract _kyc)
-    Crowdsale(rate, wallet, token) public {
+    Crowdsale(rate, wallet, token) {
         kyc = _kyc; 
     }
 
