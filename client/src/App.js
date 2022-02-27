@@ -21,7 +21,7 @@ class App extends Component {
             kycContractInstance: {},
             customerAccount: '0x0',
             kycAddress: "0x0",
-			loading: true
+			loaded: false
 		}
 	}
 
@@ -73,7 +73,7 @@ class App extends Component {
 			window.alert('Tether not deployed to the network')
 		}
   
-    this.setState({loading:false})
+    this.setState({loaded:true})
 	}
 
     handleInputChange = (event) => {
@@ -83,17 +83,15 @@ class App extends Component {
         this.setState({[name]:value})
     }
   
-    handleKycWhitelisting = () => {
-        this.setState({loading: true})
-        this.state.kycContractInstance.methods.setKycCompleted(this.state.kycAddress).send({from: this.state.customerAccount}).on('transactionHash', (hash) => {
-            this.setState({loading: false})
+    handleKycWhitelisting = async () => {
+        await this.state.kycContractInstance.methods.setKycCompleted(this.state.kycAddress).send({from: this.state.customerAccount}).on('transactionHash', (hash) => {
             alert("KYC for "+this.state.kycAddress+" is completed.");
         })
     }
 
   render() {
       let content 
-	  if(this.state.loading == true) {
+	  if(!this.state.loaded) {
         content = <p id='loader' className='text-center' style={{margin:'30', color:'white'}}>
 	    LOADING PLEASE...</p>
 	  } 
