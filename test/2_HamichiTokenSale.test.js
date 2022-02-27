@@ -1,5 +1,9 @@
 const HamichiToken = artifacts.require("HamichiToken");
 const HamichiTokenSale = artifacts.require("HamichiTokenSale");
+<<<<<<< HEAD
+=======
+const KycContract = artifacts.require("KycContract");
+>>>>>>> dev
 
 const chai = require("./setupchai.js");
 const BN = web3.utils.BN;
@@ -26,9 +30,18 @@ contract("TokenSale Test", async (accounts) => {
     it("should be possible to buy tokens", async () => {
         let HamichiTokenInstance= await HamichiToken.deployed();
         let HamichiTokenSaleInstance = await HamichiTokenSale.deployed();
+<<<<<<< HEAD
         let balanceBefore = await HamichiTokenInstance.balanceOf(deployerAccount);
         await HamichiTokenSaleInstance.sendTransaction({from: deployerAccount, value: web3.utils.toWei("1","wei")});
         return await expect(HamichiTokenInstance.balanceOf(deployerAccount)).to.eventually.be.a.bignumber.equal(balanceBefore.add(new BN(1)));
+=======
+        let KycContractInstance = await KycContract.deployed();
+        await KycContractInstance.setKycCompleted(deployerAccount,{from: deployerAccount});
+        let balanceBefore = await HamichiTokenInstance.balanceOf(deployerAccount);
+        await expect(HamichiTokenSaleInstance.sendTransaction({from: deployerAccount, value: web3.utils.toWei("1","wei")})).to.be.fulfilled;
+        let balanceAfter = balanceBefore.add(new BN(1));
+        return await expect(HamichiTokenInstance.balanceOf(deployerAccount)).to.eventually.be.a.bignumber.equal(balanceAfter);
+>>>>>>> dev
     })
 
 })
