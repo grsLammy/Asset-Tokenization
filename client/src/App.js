@@ -47,7 +47,7 @@ class App extends Component {
             // Set web3, accounts, and contract to the state, and then proceed with an
             // example of interacting with the contract's methods.
             this.listenToTokenTransfer()
-            this.setState({loaded:true, HamichiTokenSaleAddress: this.HamichiTokenSale._address}, this.updateUserTokens)
+            this.setState({loaded:true, HamichiTokenSaleAddress: HamichiTokenSale.networks[this.networkId].address}, this.updateUserTokens)
 
         } catch (error) {
             // Catch any errors for any of the above operations.
