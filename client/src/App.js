@@ -1,80 +1,73 @@
-import "./App.css";
-import Web3 from "web3";
+
 import React, { Component } from "react";
+import "./App.css";
+import getWeb3 from "./getWeb3";
 import HamichiToken from "./contracts/HamichiToken.json";
 import HamichiTokenSale from "./contracts/HamichiTokenSale.json";
 import KycContract from "./contracts/KycContract.json";
 
 
 class App extends Component {
+    state = { 
+        loaded: false ,
+        userTokens: "0",
+		kycAddress: "0x0...",
+        HamichiTokenSaleAddress: null
+    };
 
-	async UNSAFE_componentWillMount() {
-		await this.loadWeb3()
-		await this.loadBlockchainData()
+	componentDidMount = async () => {
+        try{
+            // Get network provider and web3 instance.
+            this.web3 = await getWeb3();
+
+            // Use web3 to get the user's accounts
+            this.accounts = await this.web3.eth.getAccounts()
+
+            // Get networkID
+            this.networkId = await this.web3.eth.net.getId()
+
+            // Get Instance of HamichiToken Contract
+            this.hamichiToken = new this.web3.eth.Contract(
+                HamichiToken.abi, 
+                HamichiToken.networks[this.networkId] && HamichiToken.networks[this.networkId].address,
+            )
+        
+            //load HamichiTokenSale Contract
+            this.hamichiTokenSale = new this.web3.eth.Contract(
+                HamichiTokenSale.abi, 
+                HamichiTokenSale.networks[this.networkId] && HamichiTokenSale.networks[this.networkId].address,
+            )
+
+            ///load KycContract Contract
+            this.kycContract = new this.web3.eth.Contract(
+                KycContract.abi, 
+                KycContract.networks[this.networkId] && KycContract.networks[this.networkId].address,
+            )
+
+            // Set web3, accounts, and contract to the state, and then proceed with an
+            // example of interacting with the contract's methods.
+            this.listenToTokenTransfer()
+            this.setState({loaded:true, HamichiTokenSaleAddress: HamichiTokenSale.networks[this.networkId].address}, this.updateUserTokens)
+
+        } catch (error) {
+            // Catch any errors for any of the above operations.
+            alert("Failed to load web3, accounts, or contract. Check console for details.")
+            console.error(error)
+        }   
 	}
 
-	constructor(props) {
-		super(props) 
-		this.state = {
-            hamichiTokenInstance: {},
-            hamichiTokenSaleInstance: {},
-            kycContractInstance: {},
-            customerAccount: '0x0',
-            kycAddress: "0x0",
-			loaded: false
-		}
-	}
+    updateUserTokens = async () => {
+        let userTokens = await this.hamichiToken.methods.balanceOf(this.accounts[0]).call();
+        this.setState({userTokens: userTokens})
+    }
 
-	async loadWeb3() {
-		if(window.ethereuem) {
-			window.web3 = new Web3(window.ethereuem)
-			try{
-				await window.web3.enable()
-			} catch(error) {
-				window.alert('User account access denied by the user.')
-			}
-		} else if (window.web3) {
-			window.web3 = new Web3(window.web3.currentProvider)
-		} else {
-			window.alert('Opps! It seems like Ehereuem browser was nowhere to be found. You can check out MetaMask!')
-		}
-	}
+    listenToTokenTransfer = () => {
+        this.hamichiToken.events.Transfer({to: this.accounts[0]}).on("data", this.updateUserTokens)
+    }
 
-	async loadBlockchainData() {
-		const web3 = window.web3 
-        const customerAccount = await web3.eth.requestAccounts()
-		this.setState({customerAccount: customerAccount[0]})
-		const networkId = await web3.eth.net.getId()
-
-		//load HamichiToken Contract
-		const hamichiTokenData = HamichiToken.networks[networkId]
-		if(hamichiTokenData) {
-			const hamichiTokenInstance = new web3.eth.Contract(HamichiToken.abi, hamichiTokenData.address)
-      this.setState({hamichiTokenInstance: hamichiTokenInstance})
-		} else {
-			window.alert('Tether not deployed to the network')
-		}
-
-		//load HamichiTokenSale Contract
-		const hamichiTokenSaleData = HamichiTokenSale.networks[networkId]
-		if(hamichiTokenSaleData) {
-			const hamichiTokenSaleInstance = new web3.eth.Contract(HamichiTokenSale.abi, hamichiTokenSaleData.address)
-      this.setState({hamichiTokenSaleInstance: hamichiTokenSaleInstance})
-		} else {
-			window.alert('Tether not deployed to the network')
-		}
-
-		///load KycContract Contract
-		const KYCData = KycContract.networks[networkId]
-		if(KYCData) {
-			const kycContractInstance = new web3.eth.Contract(KycContract.abi, KYCData.address)
-      this.setState({kycContractInstance: kycContractInstance})
-		} else {
-			window.alert('Tether not deployed to the network')
-		}
-  
-    this.setState({loaded:true})
-	}
+    buyTokens = async () => {
+        await this.hamichiTokenSale.methods.buyTokens(this.accounts[0]).send({from: this.accounts[0], value: this.web3.utils.toWei("1","wei")})
+    }
 
     handleInputChange = (event) => {
         const target = event.target;
@@ -84,16 +77,13 @@ class App extends Component {
     }
   
     handleKycWhitelisting = async () => {
-        await this.state.kycContractInstance.methods.setKycCompleted(this.state.kycAddress).send({from: this.state.customerAccount}).on('transactionHash', (hash) => {
-            alert("KYC for "+this.state.kycAddress+" is completed.");
-        })
-    }
+        await this.kycContract.methods.setKycCompleted(this.state.kycAddress).send({from: this.accounts[0]});
+        alert("KYC for "+this.state.kycAddress+" is completed");
+      }
 
-  render() {
-      let content 
+  render() { 
 	  if(!this.state.loaded) {
-        content = <p id='loader' className='text-center' style={{margin:'30', color:'white'}}>
-	    LOADING PLEASE...</p>
+        return <div>Loading Web3, accounts, and contract...</div>;
 	  } 
         return (
             <div className="App">
@@ -102,6 +92,10 @@ class App extends Component {
                 <h2>KYC Whitelisting</h2>
                 Address to allow: <input type="text" name="kycAddress" value={this.state.kycAddress} onChange = {this.handleInputChange} />
                 <button type="button" onClick={this.handleKycWhitelisting}>Add to Whitelist</button>
+                <h2>Buy Hamichi-Tokens</h2>
+                <p>Send Ether to this address: {this.state.HamichiTokenSaleAddress}</p>
+                <p>You currently have: {this.state.userTokens} HAMI Tokens</p>
+                <button type="button" onClick={this.buyTokens}>Buy tokens NOW!</button>
             </div>
         )
     }
